@@ -21,7 +21,18 @@ test.tpl
 	<!--END li-->
 	</ul>
 
-Usage:
+The very basic usage:
+
+	$tpl = new Templater2('test.tpl');
+	$tpl->li->assign('WWW', 'value1'); //replace the 'WWW' by the 'value1' string inside the 'li' block
+	$tpl->li->reassign(); //initial loop for 'li'
+	$tpl->li->assign('WWW', 'value2');
+	$tpl->li->reassign();
+	$tpl->li->assign('WWW', 'value3');
+	
+	echo $tpl->parse();
+
+More advanced usage:
 
 	$tpl = new Templater2();
 	$tpl->loadTemplate('test.tpl');
