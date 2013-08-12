@@ -4,7 +4,7 @@ templater2
 Pure PHP Templater
 
 test.tpl
-
+```html
 	Title
 	<ul>
 	<!--BEGIN li-->
@@ -20,9 +20,10 @@ test.tpl
 	</li>
 	<!--END li-->
 	</ul>
+```
 
 The very basic usage:
-
+```php
 	$tpl = new Templater2('test.tpl');
 	$tpl->li->assign('WWW', 'value1'); //replace the 'WWW' by the 'value1' string inside the 'li' block
 	$tpl->li->reassign(); //initial loop for 'li'
@@ -31,9 +32,9 @@ The very basic usage:
 	$tpl->li->assign('WWW', 'value3');
 	
 	echo $tpl->parse();
-
+```
 More advanced usage:
-
+```php
 	$tpl = new Templater2();
 	$tpl->loadTemplate('test.tpl');
 	$tpl->li->assign('WWW', 'value1'); //replace the 'WWW' by the 'value1' string inside the 'li' block
@@ -50,4 +51,4 @@ More advanced usage:
 	$tpl->li->div->deep->assign('@', 'I\'m a deepest span');
 
 	echo $tpl->parse();
-	
+```	
