@@ -30,7 +30,8 @@ Usage:
 	$tpl->li->assign('WWW', 'another li');
 	$tpl->li->div->assign('[key]', 'content');
 	$tpl->li->div->reassign(); //initial loop for 'div' inside 'li'
-	$tpl->li->div->assign('[key]', 'content');
+	$tpl->li->div->assign('[key]', 'more content');
+	$tpl->li->div->touchBlock('deep'); //nouch th block 'deep' without any changes
 	$tpl->reassign(); //initial loop for whole template
 	$tpl->assign('Title', 'Another UL'); //
 	$tpl->li->assign('WWW', '');
