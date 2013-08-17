@@ -19,7 +19,7 @@ class Templater2 {
 	}
 
 	/**
-	 * инстансы подключенных объектов хранятся в массиве $_p
+	 * nested blocks will be stored inside $_p
 	 * @param $k
 	 * @return Common|null
 	 */
@@ -170,65 +170,13 @@ class Templater2 {
 	}
 
 	/**
-	 * @param $html
-	 * @return array
-	 */
-	public function getSelectTags($html) {
-		$arrayOfSelect = array();
-		preg_match_all("/<select\s([^>]+)>(.*?)<\/select>/msi", $html, $arrayOfSelect);
-		return $arrayOfSelect;
-	}
-
-	/**
-	 * @param $html
-	 * @param $selectID
-	 * @param $inOptions
-	 * @param string $inVal
-	 * @return mixed
-	 */
-	public function updateSelectById($html, $selectID, $inOptions, $inVal = '') {
-		if (count($this->selects) == 0) {
-			$this->selects = $this->getSelectTags($this->html);
-		}
-		
-		if (is_array($inOptions)) {
-			$tmp = "";
-			foreach ($inOptions as $key => $val) {
-				$sel = '';
-				if ($key == $inVal) $sel = "selected=\"selected\"";
-				$tmp .= "<option $sel value=\"$key\">$val</option>";			
-			}
-			$inOptions = $tmp;
-		}
-			
-		$selPos = '';
-		// -- FIND SELECT --
-		if ($this->selects[1]) {
-			reset($this->selects[1]);
-			
-			while (list($key, $val) = each($this->selects[1])) {
-				if (stripos(' ' . $val, ' id="' . $selectID . '"') !== false or stripos(' ' . $val, ' name="' . $selectID . '"') !== false) {
-					$selPos = $key;
-					break;
-				}
-			}
-			// -- RETURN IF DID NOT FIND ITEM
-			if (!is_numeric($selPos)) return $html;
-			
-			// -- REPLACE HTML
-			return  str_replace($this->selects[0][$selPos], '<select ' . $this->selects[1][$selPos] . '>' . $inOptions . '</select>', $html);
-		}
-		return $html;
-	}	
-	
-	/**
 	 * Fill SELECT items on page
 	 *
 	 * @param varchar $inID
-	 * @param array/varhar $inOptions
+	 * @param array $inOptions
 	 * @param varchar $inVal
 	 */
-	public function fillDropDown($inID, $inOptions, $inVal = '') {
+	public function fillDropDown($inID, Array $inOptions, $inVal = '') {
 		if (is_array(current($inOptions))) {
 			$opt = array();
 			foreach ($inOptions as $val) {
@@ -237,7 +185,19 @@ class Templater2 {
 		} else {
 			$opt = $inOptions;
 		}
-		$this->html = $this->updateSelectById($this->html, $inID, $opt, $inVal);
+
+		$tmp = "";
+		foreach ($inOptions as $key => $val) {
+			$sel = '';
+			if ($key == $inVal) $sel = "selected=\"selected\"";
+			$tmp .= "<option $sel value=\"$key\">$val</option>";
+		}
+		$inOptions = $tmp;
+		$arrayOfSelect = array();
+		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$inID}[\"|'][^>]*>)(.*)(<\/select>)/msi";
+		$this->html = preg_replace($reg, "$1[$inID]$3", $this->html);
+		$this->assign("[$inID]", $inOptions);
+
 	}
 
 	/**
