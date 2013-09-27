@@ -7,6 +7,7 @@ class Templater2 {
 	private $owner = "";
 	private $selects = array();
 	private $loopHTML = array();
+	private $embrace = array('', '');
 	private $_p = array();
 
 	function __construct($tpl = '') { 
@@ -32,6 +33,7 @@ class Templater2 {
 			$temp = new Templater2();
 			$temp->owner = $k;
 			$temp->setTemplate($this->getBlock($k));
+			$temp->setEmbrace(implode('', $this->embrace));
 			$v = $this->{$k} = $temp;
 		}
 		return $v;
@@ -42,6 +44,16 @@ class Templater2 {
 	{
 		$this->_p[$k] = $v;
 		return $this;
+	}
+
+	public function setEmbrace($em) {
+		$arr = array();
+		if ((strlen($em) % 2) == 0) {
+			$i = strlen($em) / 2;
+			$arr[] = substr($em, 0, $i);
+			$arr[] = substr($em, $i);
+		}
+		$this->embrace = $arr;
 	}
 
 	/**
@@ -146,7 +158,6 @@ class Templater2 {
 					$html = $temp[1] . $temp[3];
 				}
 				if (!empty($data['REPLACE'])) {
-					$temp = array();
 					$html = str_replace("<!--$block-->", $data['REPLACE'], $html);
 				}
 			}
@@ -195,8 +206,8 @@ class Templater2 {
 		$inOptions = $tmp;
 		$arrayOfSelect = array();
 		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$inID}[\"|'][^>]*>)(.*)(<\/select>)/msi";
-		$this->html = preg_replace($reg, "$1[$inID]$3", $this->html);
-		$this->assign("[$inID]", $inOptions);
+		$this->html = preg_replace($reg, "$1[[$inID]]$3", $this->html);
+		$this->assign("[[$inID]]", $inOptions, true);
 
 	}
 
@@ -205,16 +216,19 @@ class Templater2 {
 	 * @param string $value
 	 * @return mixed
 	 */
-	public function assign($var, $value = '') {
+	public function assign($var, $value = '', $avoidEmbrace = false) {
 		if (is_array($var)) {
 			foreach ($var as $key => $val) {
-				$this->assign($key, $val);		
+				$this->assign($key, $val, $avoidEmbrace);
 			}
 		}
-		$this->vars[$var] = $value;
+		if ($avoidEmbrace) {
+			$this->vars[$var] = $value;
+		} else {
+			$this->vars[$this->embrace[0] . $var . $this->embrace[1]] = $value;
+		}
 
 	}
-
 
 	private function clear() {
 		$this->blocks = array();
@@ -224,13 +238,15 @@ class Templater2 {
 		}
 	}
 
+	/**
+	 * Reset the current instance's variables and make them able to assign again
+	 */
 	public function reassign()
 	{
 		$this->loopHTML[] = $this->parse();
 		$this->clear();
 		$this->setTemplate($this->html);
 	}
-
 
 	/**
 	 * @param $block
