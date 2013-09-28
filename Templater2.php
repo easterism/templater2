@@ -198,9 +198,14 @@ class Templater2 {
 		}
 
 		$tmp = "";
+		if ($inVal) {
+			$inVal = explode(',', $inVal);
+		} else {
+			$inVal = array();
+		}
 		foreach ($inOptions as $key => $val) {
 			$sel = '';
-			if ($key == $inVal) $sel = "selected=\"selected\"";
+			if (in_array($key, $inVal)) $sel = "selected=\"selected\"";
 			$tmp .= "<option $sel value=\"$key\">$val</option>";
 		}
 		$inOptions = $tmp;
