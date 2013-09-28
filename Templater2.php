@@ -205,8 +205,8 @@ class Templater2 {
 		}
 		$inOptions = $tmp;
 		$arrayOfSelect = array();
-		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$inID}[\"|'][^>]*>)(.*)(<\/select>)/msi";
-		$this->html = preg_replace($reg, "$1[[$inID]]$3", $this->html);
+		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$inID}[\"|'][^>]*>).*?(<\/select>)/msi";
+		$this->html = preg_replace($reg, "$1[[$inID]]$2", $this->html);
 		$this->assign("[[$inID]]", $inOptions, true);
 
 	}
