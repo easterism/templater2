@@ -1,4 +1,9 @@
 <?
+
+/**
+ * Class Templater2
+ *
+ */
 class Templater2 {
 	
 	private $blocks = array();
@@ -8,14 +13,9 @@ class Templater2 {
 	private $loopHTML = array();
 	private $embrace = array('', '');
 	private $_p = array();
-	private $plugins = array();
 
 	function __construct($tpl = '') { 
 		if ($tpl) $this->loadTemplate($tpl);
-	}
-
-	public function addPlugin($title, $obj) {
-		$this->plugins[strtolower($title)] = $obj;
 	}
 
 	public function __isset($k)
@@ -31,12 +31,6 @@ class Templater2 {
 	public function __get($k)
 	{
 		$v = NULL;
-		if (strpos($k, 'plugin') === 0) {
-			$plugin = strtolower(substr($k, 6));
-			if (array_key_exists($plugin, $this->plugins)) {
-				return $this->plugins[$plugin];
-			}
-		}
 		if (array_key_exists($k, $this->_p)) {
 			$v = $this->_p[$k];
 		} else {
@@ -148,6 +142,7 @@ class Templater2 {
 	public function parse() {
 		$html = $this->html;
 		$this->autoSearch($html);
+
 		foreach ($this->blocks as $block => $data) {
 			if (array_key_exists($block, $this->_p)) {
 				$data['REPLACE'] = $this->_p[$block]->parse();
@@ -172,21 +167,13 @@ class Templater2 {
 				}
 			}
 		}
-		$html = implode('', $this->loopHTML) . str_replace(array_keys($this->vars), $this->vars, $html);
-		$this->loopHTML = array();
-
-		//apply plugins
-		foreach ($this->plugins as $plugin => $process) {
-			preg_match_all("/\[{$plugin}:([^\]]+)\]/sm", $html, $temp);
-			//$reflector = new ReflectionClass($process);
-			//$parameters = $reflector->getMethod($plugin)->getParameters();
-			foreach ($temp[1] as $k => $value) {
-				$tmp = explode('|', $value);
-				$temp[1][$k] = call_user_func_array(array($process, $plugin), $tmp);
-			}
-			$html = str_replace($temp[0], $temp[1], $html);
+		if ($this->vars) {
+			$html = str_replace(array_keys($this->vars), $this->vars, $html);
 		}
-
+		if ($this->loopHTML) {
+			$html = implode('', $this->loopHTML) . $html;
+		}
+		$this->loopHTML = array();
 		return $html;
 	}
 
@@ -272,7 +259,6 @@ class Templater2 {
 	{
 		$this->loopHTML[] = $this->parse();
 		$this->clear();
-		$this->setTemplate($this->html);
 	}
 
 	/**
