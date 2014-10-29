@@ -1,14 +1,21 @@
-<?
+<?php
+
+
+
+/**
+ * Class Templater2
+ */
 class Templater2 {
-	
-	private $blocks = array();
-	private $vars = array();
-	private $html = "";
-	private $owner = "";
-	private $loopHTML = array();
-	private $embrace = array('', '');
-	private $_p = array();
-	private $plugins = array();
+
+    private $blocks   = array();
+    private $vars     = array();
+    private $html     = '';
+    private $owner    = '';
+    private $loopHTML = array();
+    private $embrace  = array('', '');
+    private $_p       = array();
+    private $plugins  = array();
+    private static $cache = array();
 
 	function __construct($tpl = '') { 
 		if ($tpl) $this->loadTemplate($tpl);
@@ -18,18 +25,16 @@ class Templater2 {
 		$this->plugins[strtolower($title)] = $obj;
 	}
 
-	public function __isset($k)
-	{
+	public function __isset($k) {
 		return isset($this->_p[$k]);
 	}
 
 	/**
-	 * nested blocks will be stored inside $_p
-	 * @param $k
-	 * @return Common|null
+	 * Nested blocks will be stored inside $_p
+	 * @param string $k
+	 * @return self|null
 	 */
-	public function __get($k)
-	{
+	public function __get($k) {
 		$v = NULL;
 		if (strpos($k, 'plugin') === 0) {
 			$plugin = strtolower(substr($k, 6));
@@ -40,22 +45,24 @@ class Templater2 {
 		if (array_key_exists($k, $this->_p)) {
 			$v = $this->_p[$k];
 		} else {
-			$temp = new Templater2();
+			$temp = new Templater();
 			$temp->owner = $k;
 			$temp->setTemplate($this->getBlock($k));
 			$temp->setEmbrace(implode('', $this->embrace));
 			$v = $this->{$k} = $temp;
 		}
 		return $v;
-
 	}
 
-	public function __set($k, $v)
-	{
+	public function __set($k, $v) {
 		$this->_p[$k] = $v;
 		return $this;
 	}
 
+
+    /**
+     * @param string $em
+     */
 	public function setEmbrace($em) {
 		$arr = array();
 		if ((strlen($em) % 2) == 0) {
@@ -88,13 +95,14 @@ class Templater2 {
 	 * @param $block
 	 */
 	private function newBlock($block) {
-		if (!isset($this->blocks[$block])) {
-			$this->blocks[$block] = array('PREPEND' => '', 
-										  'APPEND' => '',
-										  'GET' => false,
-										  'REASSIGN' => false,
-										  'REPLACE' => false,
-										  'TOUCHED' => false);
+		if ( ! isset($this->blocks[$block])) {
+			$this->blocks[$block] = array(
+                'PREPEND'  => '',
+                'APPEND'   => '',
+                'GET'      => false,
+                'REASSIGN' => false,
+                'REPLACE'  => false,
+                'TOUCHED'  => false);
 		}
 	}
 
@@ -120,7 +128,7 @@ class Templater2 {
 	 * @return bool|mixed|string
 	 */
 	public function getTemplate($path, $strip = true) {
-		if (!is_file($path)) {
+		if ( ! is_file($path)) {
 			return false;
 		}
 		$temp = file_get_contents($path);
@@ -148,30 +156,36 @@ class Templater2 {
 	public function parse() {
 		$html = $this->html;
 		$this->autoSearch($html);
-		foreach ($this->blocks as $block => $data) {
-			if (array_key_exists($block, $this->_p)) {
-				$data['REPLACE'] = $this->_p[$block]->parse();
-			} else {
-				//$data['TOUCHED'] = false;
-			}
-			$temp = array();
-			preg_match("/(.*)<!--\s*BEGIN\s$block\s*-->(.+)<!--\s*END\s$block\s*-->(.*)/sm", $html, $temp);
-			if (isset($temp[1])) {
-				if (!empty($data['REPLACE'])) {
-					$data['GET'] = true;
-				}
-				if ($data['TOUCHED']) {
-					$html = $temp[1] . $data['PREPEND'] . $temp[2] . $data['APPEND'] . $temp[3];
-				} else if ($data['GET']) {
-					$html = $temp[1] . "<!--$block-->" . $temp[3];
-				} else {
-					$html = $temp[1] . $temp[3];
-				}
-				if (!empty($data['REPLACE'])) {
-					$html = str_replace("<!--$block-->", $data['REPLACE'], $html);
-				}
-			}
-		}
+        foreach ($this->blocks as $block => $data) {
+            if (array_key_exists($block, $this->_p)) {
+                $data['REPLACE'] = $this->_p[$block]->parse();
+            }
+            $temp = array();
+            $key = md5($html.$block);
+
+            if (array_key_exists($key, self::$cache['blocks_content'])) {
+                $temp = self::$cache['blocks_content'][$key];
+            } else {
+                preg_match("/(.*)<!--\s*BEGIN\s$block\s*-->(.+)<!--\s*END\s$block\s*-->(.*)/sm", $html, $temp);
+                self::$cache['blocks_content'][$key] = $temp;
+            }
+
+            if (isset($temp[1])) {
+                if (!empty($data['REPLACE'])) {
+                    $data['GET'] = true;
+                }
+                if ($data['TOUCHED']) {
+                    $html = $temp[1] . $data['PREPEND'] . $temp[2] . $data['APPEND'] . $temp[3];
+                } else if ($data['GET']) {
+                    $html = $temp[1] . "<!--$block-->" . $temp[3];
+                } else {
+                    $html = $temp[1] . $temp[3];
+                }
+                if (!empty($data['REPLACE'])) {
+                    $html = str_replace("<!--$block-->", $data['REPLACE'], $html);
+                }
+            }
+        }
 		$html = implode('', $this->loopHTML) . str_replace(array_keys($this->vars), $this->vars, $html);
 		$this->loopHTML = array();
 
@@ -194,48 +208,43 @@ class Templater2 {
 	 * @param $html
 	 */
 	private function autoSearch($html) {
-		$temp = array();
-		preg_match_all("/<!--\s*BEGIN\s(.+?)\s*-->/sm", $html, $temp);
-		if (isset($temp[1]) && count($temp[1])) {
-			foreach ($temp[1] as $block) {
-				$this->newBlock($block);
-			}
+        $key  = md5($html);
+        $temp = array();
+
+        if (array_key_exists($key, self::$cache['blocks'])) {
+            $temp = self::$cache['blocks'][$key];
+        } else {
+            preg_match_all("/<!--\s*BEGIN\s(.+?)\s*-->/sm", $html, $temp);
+            self::$cache['blocks'][$key] = $temp;
 		}
+
+        if (isset($temp[1]) && count($temp[1])) {
+            foreach ($temp[1] as $block) {
+                $this->newBlock($block);
+            }
+        }
 	}
 
 	/**
 	 * Fill SELECT items on page
 	 *
-	 * @param varchar $inID
-	 * @param array $inOptions
-	 * @param varchar $inVal
+	 * @param string $id
+	 * @param array $options
+	 * @param string|array $selected
 	 */
-	public function fillDropDown($inID, Array $inOptions, $inVal = '') {
-		if (is_array(current($inOptions))) {
-			$opt = array();
-			foreach ($inOptions as $val) {
-				$opt[current($val)] = next($val);
-			}
-		} else {
-			$opt = $inOptions;
-		}
-
+	public function fillDropDown($id, array $options, $selected = '') {
 		$tmp = "";
-		if ($inVal) {
-			$inVal = explode(',', $inVal);
-		} else {
-			$inVal = array();
+		foreach ($options as $val=>$title) {
+			$sel = (is_array($selected) && in_array($val, $selected)) || $val == $selected
+                ? "selected=\"selected\" "
+                : '';
+			$tmp .= "<option {$sel}value=\"{$val}\">{$title}</option>";
 		}
-		foreach ($inOptions as $key => $val) {
-			$sel = '';
-			if (in_array($key, $inVal)) $sel = "selected=\"selected\"";
-			$tmp .= "<option $sel value=\"$key\">$val</option>";
-		}
-		$inOptions = $tmp;
-		$arrayOfSelect = array();
-		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$inID}[\"|'][^>]*>).*?(<\/select>)/msi";
-		$this->html = preg_replace($reg, "$1[[$inID]]$2", $this->html);
-		$this->assign("[[$inID]]", $inOptions, true);
+		$options = $tmp;
+        $id = preg_quote($id);
+		$reg = "/(<select\s*.*id\s*=\s*[\"|']{$id}[\"|'][^>]*>).*?(<\/select>)/msi";
+		$this->html = preg_replace($reg, "$1[[$id]]$2", $this->html);
+		$this->assign("[[$id]]", $options, true);
 	}
 
 	/**
@@ -254,7 +263,6 @@ class Templater2 {
 		} else {
 			$this->vars[$this->embrace[0] . $var . $this->embrace[1]] = $value;
 		}
-
 	}
 
 	private function clear() {
@@ -268,8 +276,7 @@ class Templater2 {
 	/**
 	 * Reset the current instance's variables and make them able to assign again
 	 */
-	public function reassign()
-	{
+	public function reassign() {
 		$this->loopHTML[] = $this->parse();
 		$this->clear();
 		$this->setTemplate($this->html);
@@ -281,7 +288,7 @@ class Templater2 {
 	 * @return string
 	 */
 	public function getBlock($block, $html = '') {
-		if (!$html) {
+		if ( ! $html) {
 			$html = $this->html;
 		}
 		$temp = array();
@@ -293,5 +300,4 @@ class Templater2 {
 		$this->blocks[$block]['GET'] = true;
 		return $html;
 	}
-
 }
